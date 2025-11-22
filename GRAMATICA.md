@@ -1,17 +1,155 @@
 # Trabalho Gramática
 
-Necessário:
-Lexer -> Analisador léxico
-Parser -> Analisador sintático
+Este trabalho apresenta a especificação formal de uma linguagem de programação inspirada no Portugol, com sintaxe simplificada e funcionalidades reduzidas. A linguagem implementa os recursos essenciais para programação estruturada: tipos de dados primitivos (inteiro e real), estruturas de controle (seleção e repetição) e suporte a funções com parâmetros e retorno.
 
-Lexer -> AFD grande, o qual pode gerar tokens baseado no estado final
-Parser -> AP capaz de analisar os tokes
+A especificação foi desenvolvida com base no Manual da versão v1.0 do G-Portugol, adaptada para atender os requisitos do trabalho acadêmico. Este documento inclui a tabela de tokens (análise léxica), as regras da gramática formal (análise sintática) e exemplos práticos de código com sua respectiva tokenização.
 
-## Lexer
+## Tabela de tokens
 
-### Sintaxe Portugol
+| TOKEN            | REGEX                    |
+|------------------|--------------------------|
+| "algoritmo"      | `algoritmo`              |
+| "variáveis"      | `variáveis`              |
+| "fim-variáveis"  | `fim-variáveis`          |
+| "início"         | `início`                 |
+| "fim"            | `fim`                    |
+| "função"         | `função`                 |
+| "inteiro"        | `inteiro`                |
+| "real"           | `real`                   |
+| "se"             | `se`                     |
+| "então"          | `então`                  |
+| "fim-se"         | `fim-se`                 |
+| "para"           | `para`                   |
+| "de"             | `de`                     |
+| "até"            | `até`                    |
+| "faça"           | `faça`                   |
+| "fim-para"       | `fim-para`               |
+| "retorne"        | `retorne`                |
+| ":="             | `:=`                     |
+| "+"              | `+`                      |
+| ">"              | `>`                      |
+| "("              | `(`                      |
+| ")"              | `)`                      |
+| ","              | `,`                      |
+| ":"              | `:`                      |
+| ";"              | `;`                      |
+| T_IDENTIFICADOR  | `[A-Za-z_][A-Za-z0-9_]*` |
+| T_INT_LIT        | `[0-9]+`                 |
+| T_STRING_LIT     | `\"[^\n]*\"`             |
+| T_REAL_LIT       | `[0-9]+\.[0-9]+`         |
 
-```portugol
+OBS: funções como "imprimir" e "leia" virarão T_IDENTIFICADOR. A ideia é que não sejam algo nativo (com palavras reservadas), mas sim uma implementação que vem junto a linguagem (semelhante a algumas libs do java ☕)
+
+## Gramática (baseada na documentação do G-Portugol)
+
+```plain text
+algoritmo
+: declaracao_algoritmo (var_decl_block)? stm_block (func_decl)* EOF
+;
+
+declaracao_algoritmo
+: "algoritmo" T_IDENTIFICADOR ";"
+;
+
+var_decl_block
+: "variáveis" (var_decl ";")+ "fim-variáveis"
+;
+
+var_decl
+: T_IDENTIFICADOR ":" tp_primitivo
+;
+
+tp_primitivo
+: "inteiro"
+| "real"
+;
+
+stm_block
+: "início" (stm_list)* "fim"
+;
+
+stm_list
+: stm_attr
+| fcall ";"
+| stm_ret
+| stm_se
+| stm_para
+;
+
+stm_ret
+: "retorne" expr? ";"
+;
+
+lvalue
+: T_IDENTIFICADOR
+;
+
+stm_attr
+: lvalue ":=" expr ";"
+;
+
+stm_se
+: "se" expr "então" (stm_list)+ "fim-se"
+;
+
+stm_para
+: "para" lvalue "de" expr "até" expr "faça" (stm_list)+ "fim-para"
+;
+
+expr
+: expr ("ou"|"||") expr
+| expr ("e"|"&&") expr
+| expr "|" expr
+| expr "^" expr
+| expr "&" expr
+| expr ("="|"<>") expr
+| expr (">"|">="|"<"|"<=") expr
+| expr ("+" | "-") expr
+| expr ("/"|"*"|"%") expr
+| ("+"|"-"|"~"|"não")? termo
+;
+
+termo
+: fcall
+| lvalue
+| literal
+| "(" expr ")"
+;
+
+fcall
+: T_IDENTIFICADOR "(" fargs? ")"
+;
+
+fargs
+: expr ("," expr)*
+;
+
+literal
+: T_STRING_LIT
+| T_INT_LIT
+| T_REAL_LIT
+;
+
+func_decl
+: "função" T_IDENTIFICADOR "(" fparams? ")" (":" tp_primitivo)? fvar_decl stm_block
+;
+
+fvar_decl
+: (var_decl ";")*
+;
+
+fparams
+: fparam ("," fparam)*
+;
+
+fparam
+: T_IDENTIFICADOR ":" tp_primitivo
+;
+```
+
+## Exemplo
+
+```plain text
 algoritmo exemplo;
 
 variáveis
@@ -43,81 +181,36 @@ início
 fim
 ```
 
-### Resultado tokenizado (beaseado na seção de "gramática" do G-Portugol)**
+## Exemplo tokenizado
 
-```Plain text
-KW_ALGORITMO T_IDENTIFICADOR SEMICOLON
+```plain text
+"algoritmo" T_IDENTIFICADOR ";"
 
-KW_VARIAVEIS
-    T_IDENTIFICADOR COLON KW_INTEIRO SEMICOLON
-KW_FIM_VARIAVEIS
+"variáveis"
+    T_IDENTIFICADOR ":" "inteiro" ";"
+"fim-variáveis"
 
-KW_INICIO
-    T_IDENTIFICADOR LPAREN T_STRING_LIT RPAREN SEMICOLON
-    T_IDENTIFICADOR OP_ATRIB T_IDENTIFICADOR LPAREN RPAREN SEMICOLON
+"início"
+    T_IDENTIFICADOR "(" T_STRING_LIT ")" ";"
+    T_IDENTIFICADOR ":=" T_IDENTIFICADOR "(" ")" ";"
 
 
-    KW_SE LPAREN T_IDENTIFICADOR OP_GT T_INT_LIT RPAREN KW_ENTAO
-        T_IDENTIFICADOR LPAREN T_STRING_LIT COMMA T_IDENTIFICADOR COMMA T_STRING_LIT COMMA T_IDENTIFICADOR LPAREN T_IDENTIFICADOR RPAREN RPAREN SEMICOLON
-    KW_FIMSE
-KW_FIM
+    "se" "(" T_IDENTIFICADOR ">" T_INT_LIT ")" "então"
+        T_IDENTIFICADOR "(" T_STRING_LIT "," T_IDENTIFICADOR "," T_STRING_LIT "," T_IDENTIFICADOR "(" T_IDENTIFICADOR ")" ")" ";"
+    "fim-se"
+"fim"
 
-KW_FUNCAO T_IDENTIFICADOR LPAREN T_IDENTIFICADOR COLON KW_INTEIRO RPAREN COLON KW_INTEIRO
-T_IDENTIFICADOR COLON KW_INTEIRO SEMICOLON
-T_IDENTIFICADOR COLON KW_INTEIRO SEMICOLON
-T_IDENTIFICADOR COLON KW_REAL SEMICOLON
-KW_INICIO
-    T_IDENTIFICADOR OP_ATRIB T_INT_LIT SEMICOLON
+"função" T_IDENTIFICADOR "(" T_IDENTIFICADOR ":" "inteiro" ")" ":" "inteiro"
+T_IDENTIFICADOR ":" "inteiro" ";"
+T_IDENTIFICADOR ":" "inteiro" ";"
+T_IDENTIFICADOR ":" "real" ";"
+"início"
+    T_IDENTIFICADOR ":=" T_INT_LIT ";"
 
-    KW_PARA T_IDENTIFICADOR KW_DE T_INT_LIT KW_ATE T_IDENTIFICADOR KW_FACA
-        T_IDENTIFICADOR OP_ATRIB T_IDENTIFICADOR OP_SOMA T_IDENTIFICADOR SEMICOLON
-    KW_FIM_PARA
+    "para" T_IDENTIFICADOR "de" T_INT_LIT "até" T_IDENTIFICADOR "faça"
+        T_IDENTIFICADOR ":=" T_IDENTIFICADOR "+" T_IDENTIFICADOR ";"
+    "fim-para"
 
-    KW_RETORNE T_IDENTIFICADOR;
-KW_FIM
+    "retorne" T_IDENTIFICADOR ";"
+"fim"
 ```
-
-### Tabela de regras do lexer
-
-| TOKEN            | REGEX                    |
-|------------------|--------------------------|
-| KW_ALGORITMO     | `algoritmo`              |
-| KW_VARIAVEIS     | `variáveis`              |
-| KW_FIM_VARIAVEIS | `fim-variáveis`          |
-| KW_INICIO        | `início`                 |
-| KW_FIM           | `fim`                    |
-| KW_FUNCAO        | `função`                 |
-| KW_INTEIRO       | `inteiro`                |
-| KW_REAL          | `real`                   |
-| KW_SE            | `se`                     |
-| KW_ENTAO         | `então`                  |
-| KW_FIMSE         | `fim-se`                 |
-| KW_PARA          | `para`                   |
-| KW_DE            | `de`                     |
-| KW_ATE           | `até`                    |
-| KW_FACA          | `faça`                   |
-| KW_FIM_PARA      | `fim-para`               |
-| KW_RETORNE       | `retorne`                |
-| OP_ATRIB         | `:=`                     |
-| OP_SOMA          | `+`                      |
-| OP_GT            | `>`                      |
-| LPAREN           | `(`                      |
-| RPAREN           | `)`                      |
-| COMMA            | `,`                      |
-| COLON            | `:`                      |
-| SEMICOLON        | `;`                      |
-| T_IDENTIFICADOR  | `[A-Za-z_][A-Za-z0-9_]*` |
-| T_INT_LIT        | `[0-9]+`                 |
-| T_STRING_LIT     | `"[^\n]*"`               |
-
-**Mecânica do lexer (explicado em outras palavras por IA):**
-
-1. O lexer lê caracteres da esquerda para a direita, mantendo um “current lexeme” (seu buffer).
-2. A cada caractere, ele tenta avançar no AFD gigante = combinação de todas REGEX.
-3. Se o AFD ainda está em um estado válido, você continua lendo.
-4. Se o AFD chega a um estado final, você marca isso como “última posição onde um token válido terminou”.
-5. Se o próximo caractere causar erro (transição impossível), o lexer retrocede para a última posição marcada como válida e emite aquele token.
-
-OBS: deve ter um tratamento no lexer para ignorar espaços, tabulações ou quebra de linha, como: `[\s\t\n\r]+`
-
-## Parser
