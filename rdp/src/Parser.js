@@ -48,7 +48,7 @@ class Parser {
 
     T_STRING_LIT() {
         const token = this._eat('T_STRING_LIT');
-        return { type: token.type, value: token.value };
+        return { type: token.type, value: token.value.slice(1, -1) };
     }
 
     _eat(tokenType) {
